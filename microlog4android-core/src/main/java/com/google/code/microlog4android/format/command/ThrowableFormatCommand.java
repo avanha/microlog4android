@@ -15,6 +15,9 @@
 
 package com.google.code.microlog4android.format.command;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import com.google.code.microlog4android.Level;
 
 /**
@@ -23,6 +26,9 @@ import com.google.code.microlog4android.Level;
  * @author Johan Karlsson (johan.karlsson@jayway.se)
  */
 public class ThrowableFormatCommand implements FormatCommandInterface {
+	public static final int NO_MAX_LINES = -1; 
+	
+	private int maxLines = NO_MAX_LINES;
 	
 	/**
 	 * @see com.google.code.microlog4android.format.command.FormatCommandInterface#init(String)
@@ -37,13 +43,17 @@ public class ThrowableFormatCommand implements FormatCommandInterface {
 	 * @see FormatCommandInterface#execute(String, String, long, Level, Object, Throwable)
 	 */
 	public String execute(String clientID, String name, long time, Level level, Object message, Throwable throwable) {
-
-		String throwableMessage = "";
-		if (throwable != null) {
-			throwableMessage = throwable.toString();
-		}
-
-		return throwableMessage;
+		String result = "";
+		
+	    if (maxLines != 0 && throwable != null) {
+	    	StringWriter sw = new StringWriter();
+	    	PrintWriter pw = new PrintWriter(sw);
+	    	throwable.printStackTrace(pw);
+	    	pw.flush();
+	    	pw.close();
+	    	result = sw.getBuffer().toString();
+	    }
+	    	
+		return result;
 	}
-
 }

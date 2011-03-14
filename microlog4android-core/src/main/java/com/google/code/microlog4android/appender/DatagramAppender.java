@@ -36,6 +36,8 @@ import com.google.code.microlog4android.Level;
 public class DatagramAppender extends AbstractAppender {
 	private static final String TAG = "Microlog.DatagramAppender";
 	
+	private static final String[] PROPERTY_NAMES = new String[] { "host", "port" };
+	
 	public static final String DEFAULT_HOST = "127.0.0.1";
 
 	private DatagramSocket datagramSocket;
@@ -124,9 +126,27 @@ public class DatagramAppender extends AbstractAppender {
 	public long getLogSize() {
 		return SIZE_UNDEFINED;
 	}
+	
+	public String[] getPropertyNames() {
+		return PROPERTY_NAMES;
+	}
 
 	public void setPort(int port) {
 		this.port = port;
 	}
-
+	
+	public void setPort(String port) {
+		try {
+			this.port = Integer.parseInt(port);
+		} catch (NumberFormatException e) {
+			Log.e(TAG, port + " is not a valid integer");
+		}
+	}
+	
+	public void setProperty(String name, String value) {
+		if (name.equals("host"))
+			host = value;
+		else if (name.equals("port")) 
+			setPort(value);
+	}
 }

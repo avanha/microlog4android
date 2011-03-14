@@ -94,6 +94,13 @@ public interface Appender {
 	long getLogSize();
 
 	/**
+	 * Returns the array of properties supported by the appender.
+	 * 
+	 * @return An array of property names supported by the appender.
+	 */
+	String[] getPropertyNames();
+	
+	/**
 	 * Set the formatter to use.
 	 * 
 	 * @param formatter
@@ -101,6 +108,14 @@ public interface Appender {
 	 */
 	void setFormatter(Formatter formatter);
 
+	/**
+	 * Sets an appender property.
+	 * 
+	 * @param name The name of the property.
+	 * @param value The property value.
+	 */
+	void setProperty(String name, String value);
+	
 	/**
 	 * Get the formatter that is in use.
 	 * 

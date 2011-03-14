@@ -32,6 +32,7 @@ import com.google.code.microlog4android.Level;
  */
 public class FileAppender extends AbstractAppender {
 	private static final String TAG = "Microlog.FileAppender";
+	private static final String[] PROPERTY_NAMES = new String[] { "file", "append" };
 	
 	public static final String DEFAULT_FILENAME = "microlog.txt";
 
@@ -58,13 +59,8 @@ public class FileAppender extends AbstractAppender {
 			}
 			
 			FileOutputStream fileOutputStream = new FileOutputStream(logFile, append);
-			
-			if(fileOutputStream != null) {
-				writer = new PrintWriter(fileOutputStream);
-				logOpen = true;
-			} else {
-				Log.e(TAG, "Failed to create the log file (no stream)");
-			}
+			writer = new PrintWriter(fileOutputStream);
+			logOpen = true;
 		}
 	}
 
@@ -116,6 +112,10 @@ public class FileAppender extends AbstractAppender {
 		return Appender.SIZE_UNDEFINED;
 	}
 
+	public String[] getPropertyNames() {
+		return PROPERTY_NAMES;
+	}
+	
 	/**
 	 * Set the filename to be used
 	 * 
@@ -139,7 +139,18 @@ public class FileAppender extends AbstractAppender {
 	public void setAppend(boolean append) {
 		this.append = append;
 	}
+	
+	public void setAppend(String append) {
+		this.append = Boolean.parseBoolean(append);
+	}
 
+	public void setProperty(String name, String value) {
+		if (name.equals("append"))
+			setAppend(value);
+		else if (name.equals("file"))
+			setFileName(value);
+	}
+	
 	private File getSDCardFile() {
 		String externalStorageState = Environment.getExternalStorageState();
 		File externalStorageDirectory = Environment

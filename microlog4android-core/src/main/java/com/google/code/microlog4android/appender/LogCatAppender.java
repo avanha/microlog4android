@@ -7,34 +7,36 @@ import android.util.Log;
 import com.google.code.microlog4android.Level;
 
 public class LogCatAppender extends AbstractAppender {
-
+	private static final String[] PROPERTY_NAMES = new String[] { "tag" };
+	
+	private String tag;
+	
 	@Override
 	public void clear() {
 	}
 
-
 	@Override
 	public void doLog(String clientID, String name, long time, Level level, Object message, Throwable t) {
-
 		if (logOpen && formatter != null) {
-						
+			String localTag = tag == null ? clientID : tag;
+			
 			switch (level) {
 			case FATAL:
 			case ERROR:
-				Log.e(clientID, formatter.format(clientID, name, time, level, message, t));
+				Log.e(localTag, formatter.format(clientID, name, time, level, message, t));
 				break;
 			
 			case WARN:
-				Log.w(clientID, formatter.format(clientID, name, time, level, message, t));
+				Log.w(localTag, formatter.format(clientID, name, time, level, message, t));
 				break;
 			
 			case INFO:
-				Log.i(clientID, formatter.format(clientID, name, time, level, message, t));
+				Log.i(localTag, formatter.format(clientID, name, time, level, message, t));
 				break;
 				
 			case DEBUG:
 			case TRACE:
-				Log.d(clientID, formatter.format(clientID, name, time, level, message, t));
+				Log.d(localTag, formatter.format(clientID, name, time, level, message, t));
 				break;
 			default:
 				break;
@@ -52,9 +54,16 @@ public class LogCatAppender extends AbstractAppender {
 		logOpen = false;
 	}
 	
-	@Override
 	public long getLogSize() {
 		return SIZE_UNDEFINED;
 	}
-
+	
+	public String[] getPropertyNames() {
+		return PROPERTY_NAMES;
+	}
+	
+	public void setProperty(String name, String value) {
+		if (name.equals("tag"))
+			tag = value;
+	}
 }

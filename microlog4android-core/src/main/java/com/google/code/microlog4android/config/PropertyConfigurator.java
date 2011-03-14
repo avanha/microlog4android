@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.StringTokenizer;
 
@@ -72,26 +74,58 @@ public class PropertyConfigurator {
 	 * The key for setting the logging tag.
 	 */
 	public static final String TAG_PREFIX_KEY = "microlog.tag";
+	
+	/**
+	 * Separate prefixes from instance names.
+	 */
+	public static final String PREFIX_SEPARATOR = ".";
+	
+	/**
+	 * Separates property names for prefixes or instance names
+	 */
+	public static final String PROPERTY_SEPARATOR = ".";
+	
+	/**
+	 * The appender's formatter property.
+	 */
+	public static final String FORMATTER_PROPERTY = "formatter";
+	
+	/**
+	 * The default Log level (String)
+	 */
+	public static final String DEFAULT_LOG_LEVEL_STRING = "DEBUG";
+	
+	/**
+	 * The default log level if none is specified.
+	 */
+	public static final Level DEFAULT_LOG_LEVEL = Level.DEBUG; 
+	
+	/**
+	 * The property delimiter used in Log4j property files.
+	 */
+	public static final String LOG4J_PROPERTY_DELIMITER = ","; 
 
-	public static final String[] APPENDER_ALIASES = { "LogCatAppender", "FileAppender" };
+	public static final String[] APPENDER_ALIASES = { "LogCatAppender", "FileAppender", "DatagramAppender" };
 
 	public static final String[] APPENDER_CLASS_NAMES = { "com.google.code.microlog4android.appender.LogCatAppender",
-			"com.google.code.microlog4android.appender.FileAppender" };
+			"com.google.code.microlog4android.appender.FileAppender", "com.google.code.microlog4android.appender.DatagramAppender" };
 
 	public static final String[] FORMATTER_ALIASES = { "SimpleFormatter", "PatternFormatter" };
 
 	public static final String[] FORMATTER_CLASS_NAMES = { "com.google.code.microlog4android.format.SimpleFormatter",
 			"com.google.code.microlog4android.format.PatternFormatter" };
 
-	private static final HashMap<String, String> appenderAliases = new HashMap<String, String>(43);
+	private static final HashMap<String, String> appenderAliases = new HashMap<String, String>(2);
 
-	private static final HashMap<String, String> formatterAliases = new HashMap<String, String>(21);
+	private static final HashMap<String, String> formatterAliases = new HashMap<String, String>(2);
 
 	private Context context;
 
 	private LoggerRepository loggerRepository;
+	
+	private Map<String, Appender> appenders;
 
-	{
+	static {
 		for (int index = 0; index < APPENDER_ALIASES.length; index++) {
 			appenderAliases.put(APPENDER_ALIASES[index], APPENDER_CLASS_NAMES[index]);
 		}
@@ -105,7 +139,7 @@ public class PropertyConfigurator {
 		this.context = context;
 		loggerRepository = DefaultLoggerRepository.INSTANCE;
 	}
-
+	
 	/**
 	 * Create a configurator for the specified context.
 	 * 
@@ -170,76 +204,72 @@ public class PropertyConfigurator {
 	}
 
 	/**
-	 * Load the properties
+	 * Create the specified appender.  The appender is only created but not 
+	 * configured. 
 	 * 
-	 * @param inputStream
-	 *            the {@link InputStream} to read from
-	 * @return the {@link Properties} object containing the properties read from
-	 *         the {@link InputStream}
-	 * @throws IOException
-	 *             if the loading fails.
+	 * @param appenderName
+	 * @param properties
+	 * @return An instance of the appender class.
 	 */
-	private Properties loadProperties(InputStream inputStream) throws IOException {
-		Properties properties = new Properties();
-		properties.load(inputStream);
-		return properties;
+	protected Appender createAppender(String appenderName, Properties properties) {
+		Appender appender = null;
+		
+		String appenderClassNameProperty = PropertyConfigurator.APPENDER_PREFIX_KEY +  PREFIX_SEPARATOR + appenderName;
+		String appenderClassName = properties.getProperty(appenderClassNameProperty);
+			
+		if (appenderClassName != null) {
+			appenderClassName = checkForAliasAppender(appenderClassName);
+			
+			try {
+				Class<?> appenderClass = Class.forName(appenderClassName);
+				appender = (Appender) appenderClass.newInstance();
+			} catch (ClassNotFoundException e) {
+				Log.e(TAG, "Could not find appender class " + appenderName);
+			} catch (InstantiationException e) {
+				Log.e(TAG, "Could not instantiate appender class " + appenderName);
+			} catch (IllegalAccessException e) {
+				Log.e(TAG, "Not allowed to create appender class " + appenderName);
+			} 
+		}
+		
+		return appender;
+	}
+	
+	/**
+	 * Retrieves or creates the named appender.
+	 * 
+	 * @param appenderName The name of the appender.
+	 * @param properties Properties us to create and configure the appender.
+	 * @return The appender or null.
+	 */
+	protected Appender getAppender(String appenderName, Properties properties) {
+		Appender appender = null;
+		
+		// Check to see if we've already created this appender
+		if (appenders != null)
+			appender = appenders.get(appenderName);
+
+		if (appender == null) {
+			appender = doConfigureAppender(appenderName, properties); 
+
+			if (appender != null) {
+				// Store the appender in our map, in case another logger in our configuration
+				// makes a reference to it.
+				if (appenders == null)
+					appenders = new HashMap<String, Appender>();
+				
+				appenders.put(appenderName, appender);
+			}
+		}
+		
+		return appender;
 	}
 
 	/**
-	 * Start the configuration
+	 * Adds the given appender to the root logger.  (Legacy MicroLog configuration style)
 	 * 
-	 * @param properties
+	 * @param string The appender class name or alias.
 	 */
-	private void startConfiguration(Properties properties) {
-
-		if (properties.containsKey(PropertyConfigurator.ROOT_LOGGER_KEY)) {
-			Log.i(TAG, "Modern configuration not yet supported");
-		} else {
-			Log.i(TAG, "Configure using the simple style (aka classic style)");
-			configureSimpleStyle(properties);
-		}
-	}
-
-	private void configureSimpleStyle(Properties properties) {
-
-		setLevel(properties);
-
-		String appenderString = properties.getProperty(PropertyConfigurator.APPENDER_PREFIX_KEY, "LogCatAppender");
-		List<String> appenderList = parseAppenderString(appenderString);
-		setAppenders(appenderList);
-
-		setFormatter(properties);
-	}
-
-	private void setLevel(Properties properties) {
-		String levelString = (String) properties.get(PropertyConfigurator.LOG_LEVEL_PREFIX_KEY);
-		Level level = stringToLevel(levelString);
-
-		if (level != null) {
-			loggerRepository.getRootLogger().setLevel(level);
-			Log.i(TAG, "Root level: " + loggerRepository.getRootLogger().getLevel());
-		}
-
-	}
-
-	private List<String> parseAppenderString(String appenderString) {
-		StringTokenizer tokenizer = new StringTokenizer(appenderString, ";,");
-		List<String> appenderList = new ArrayList<String>();
-
-		while (tokenizer.hasMoreElements()) {
-			String appender = (String) tokenizer.nextElement();
-			appenderList.add(appender);
-		}
-
-		return appenderList;
-	}
-
-	private void setAppenders(List<String> appenderList) {
-		for (String string : appenderList) {
-			addAppender(string);
-		}
-	}
-
 	private void addAppender(String string) {
 
 		Logger rootLogger = loggerRepository.getRootLogger();
@@ -250,7 +280,7 @@ public class PropertyConfigurator {
 		}
 
 		try {
-			Class appenderClass = Class.forName(className);
+			Class<?> appenderClass = Class.forName(className);
 			Appender appender = (Appender) appenderClass.newInstance();
 
 			if (appender != null) {
@@ -268,7 +298,303 @@ public class PropertyConfigurator {
 			Log.e(TAG, "Specified appender class does not implement the Appender interface: " + e);
 		}
 	}
+	
+	/**
+	 * Check if the specified appender is an alias. If so the appender name is
+	 * converted to fully qualified class name.
+	 *  
+	 * @param appenderName
+	 * @return
+	 */
+	private String checkForAliasAppender(String appenderName) {
+		return resolveAlias(appenderName, appenderAliases);
+	}
+	
+	/**
+	 * Check if this is an alias for a real formatter. 
+	 * 
+	 * @param formatterName
+	 * @return
+	 */
+	private String checkForAliasFormatter(String formatterName) {
+		return resolveAlias(formatterName, formatterAliases);
+	}
 
+	/**
+	 * Configures using modern Log4j style syntax with full hierarchy support.
+	 * 
+	 * @param properties The properties to configure from.
+	 */
+	private void configureLog4jStyle(Properties properties) {
+		loggerRepository.reset();
+		String rootLoggerProperty = properties.getProperty(PropertyConfigurator.ROOT_LOGGER_KEY);
+		doConfigureLogger(/*path*/null, rootLoggerProperty, properties);
+		
+		for (Entry<Object,Object> entry : properties.entrySet()) {
+			String key = (String)entry.getKey();
+			
+			if (key.startsWith(LOGGER_PREFIX_KEY)) {
+				// Strip off the leading characters.
+				String path = key.substring(LOGGER_PREFIX_KEY.length() + 1);
+				String value = (String)entry.getValue();
+				doConfigureLogger(path, value, properties);
+			}
+		}
+	}
+
+	/**
+	 * Configures using the legacy MicroLog style syntax.
+	 * 
+	 * @param properties The properties to configure from.
+	 */
+	private void configureSimpleStyle(Properties properties) {
+		setLevel(properties);
+
+		String appenderString = properties.getProperty(PropertyConfigurator.APPENDER_PREFIX_KEY, "LogCatAppender");
+		List<String> appenderList = parseAppenderString(appenderString);
+		setAppenders(appenderList);
+		setFormatter(properties);
+	}
+	
+	/**
+	 * Creates a formatter for the specified appender.
+	 * 
+	 * @param appenderName The appender for which to configure a formatter.
+	 * @param properties The properties to configure from.
+	 * @return A newly created formatter or null.
+	 */
+	private Formatter createFormatter(String appenderName, Properties properties) {
+		Formatter formatter = null;
+		
+		StringBuilder formatterKey = new StringBuilder(64);
+		formatterKey.append(APPENDER_PREFIX_KEY);
+		formatterKey.append(PREFIX_SEPARATOR);
+		formatterKey.append(appenderName);
+		formatterKey.append(PROPERTY_SEPARATOR);
+		formatterKey.append(FORMATTER_PROPERTY);
+		String formatterClassName = properties.getProperty(formatterKey.toString());
+		
+		if (formatterClassName == null) {
+			Log.e(TAG, "No formatter class defined");
+		} else {
+			formatterClassName = checkForAliasFormatter(formatterClassName);
+			
+			try {
+				Class<?> formatterClass = Class.forName(formatterClassName);
+				formatter = (Formatter) formatterClass.newInstance();
+			} catch (ClassNotFoundException e) {
+				Log.e(TAG, "Could not find formatter class " + appenderName);
+			} catch (InstantiationException e) {
+				Log.e(TAG, "Could not instantiate formatter class " + appenderName);
+			} catch (IllegalAccessException e) {
+				Log.e(TAG, "Not allowed to create formatter class " + appenderName);
+			} 
+		}
+		
+		return formatter;
+	}
+	
+	/**
+	 * Create and configure the specified appender using the properties.
+	 * 
+	 * @param appenderName
+	 * @param properties
+	 * @return The appender or null
+	 */
+	private Appender doConfigureAppender(String appenderName, Properties properties) {
+		Appender appender = createAppender(appenderName, properties);
+		
+		if (appender != null) {
+			Formatter formatter = doConfigureFormatter(appenderName, properties);
+			
+			if (formatter != null) {
+				appender.setFormatter(formatter);
+			}
+			
+			String[] propertyNames = appender.getPropertyNames();
+			
+			if (propertyNames != null && propertyNames.length > 0) {
+				StringBuilder propertyKeyBuffer = new StringBuilder(64);
+				
+				for (int i = 0; i < propertyNames.length; i++) {
+					// Clear the buffer
+					propertyKeyBuffer.delete(0, propertyKeyBuffer.length());
+					
+					// Build up the full property name
+					propertyKeyBuffer.append(APPENDER_PREFIX_KEY);
+					propertyKeyBuffer.append(PREFIX_SEPARATOR);
+					
+					if (appenderName != null) {
+						propertyKeyBuffer.append(appenderName);
+						propertyKeyBuffer.append(PROPERTY_SEPARATOR);
+					}
+					
+					propertyKeyBuffer.append(propertyNames[i]);
+					
+					String value = properties.getProperty(propertyKeyBuffer.toString());
+					
+					if (value != null) {
+						Log.i(TAG, "Setting property " + propertyNames[i] + "=" + value);
+						appender.setProperty(propertyNames[i], value);
+					}
+				}
+			}
+		}
+		
+		return appender;
+	}
+	
+	private Logger doConfigureLogger(String path, String settings, Properties properties) {
+		Logger logger;
+		
+		if (path == null || path.length() == 0) {
+			logger = loggerRepository.getRootLogger();
+		} else {
+			logger = loggerRepository.getLogger(path);
+		}
+		
+		int endIndex = settings.indexOf(LOG4J_PROPERTY_DELIMITER);
+		String levelString;
+		
+		if (endIndex == -1) {
+			endIndex = settings.length();
+			levelString = settings; 
+		} else {
+			levelString = settings.substring(0, endIndex);
+		}
+		
+		Level level = stringToLevel(levelString);
+		
+		if (level == null) {
+			Log.e(TAG, "Level " + levelString + " is not a valid level.");
+		} else {
+			logger.setLevel(level);
+		}
+		
+		int beginIndex = endIndex + 1;
+		
+		while (beginIndex < settings.length()) {
+			// Find the end of the current appender name.
+			endIndex = settings.indexOf(LOG4J_PROPERTY_DELIMITER, beginIndex);
+			
+			if (endIndex == -1) {
+				endIndex = settings.length();
+			}
+			
+			// Get the appender name and update the position
+			String appenderName = settings.substring(beginIndex, endIndex).trim();
+			
+			Appender appender = getAppender(appenderName, properties);
+			
+			if (appender != null) {
+				Log.i(TAG, "Adding appender " + appender);
+				logger.addAppender(appender);
+			}
+			
+			// Update the current search start position
+			beginIndex = endIndex + 1;			
+		} 
+		
+		return logger;
+	}
+	
+	private Formatter doConfigureFormatter(String appenderName, Properties properties) {
+		// Create the formatter
+		Formatter formatter = createFormatter(appenderName, properties);
+
+		// If we we created it, configure it's supported properties
+		if (formatter != null) {
+			String[] formatterProperties = formatter.getPropertyNames();
+			
+			if (formatterProperties != null && formatterProperties.length > 0) {
+				StringBuilder propertyKeyBuffer = new StringBuilder(64);
+				
+				for (int i = 0; i < formatterProperties.length; i++) {
+					// Clear the buffer
+					propertyKeyBuffer.delete(0, propertyKeyBuffer.length());
+					
+					// Build up the full property name
+					propertyKeyBuffer.append(APPENDER_PREFIX_KEY);
+					propertyKeyBuffer.append(PREFIX_SEPARATOR);
+					propertyKeyBuffer.append(appenderName);
+					propertyKeyBuffer.append(PROPERTY_SEPARATOR);
+					propertyKeyBuffer.append(FORMATTER_PROPERTY);
+					propertyKeyBuffer.append(PROPERTY_SEPARATOR);
+					propertyKeyBuffer.append(formatterProperties[i]);
+					
+					String value = properties.getProperty(propertyKeyBuffer.toString());
+					
+					if (value != null) {
+						Log.i(TAG, "Setting property " + formatterProperties[i] + "=" + value);
+						formatter.setProperty(formatterProperties[i], value);
+					}
+				}
+			}
+		}
+		
+		return formatter;
+	}
+	
+	/**
+	 * Load the properties
+	 * 
+	 * @param inputStream
+	 *            the {@link InputStream} to read from
+	 * @return the {@link Properties} object containing the properties read from
+	 *         the {@link InputStream}
+	 * @throws IOException
+	 *             if the loading fails.
+	 */
+	private Properties loadProperties(InputStream inputStream) throws IOException {
+		Properties properties = new Properties();
+		properties.load(inputStream);
+		return properties;
+	}
+	
+	private List<String> parseAppenderString(String appenderString) {
+		StringTokenizer tokenizer = new StringTokenizer(appenderString, ";,");
+		List<String> appenderList = new ArrayList<String>();
+
+		while (tokenizer.hasMoreElements()) {
+			String appender = (String) tokenizer.nextElement();
+			appenderList.add(appender);
+		}
+
+		return appenderList;
+	}
+
+	/**
+	 * Returns the class name for the specified name in the given map, or if there is no mapping
+	 * the name itself since it wasn't an alias.
+	 * 
+	 * @param name The name to look for.
+	 * @param aliases The map of aliases to real names.
+	 * @return The resolved alias or the original name if it wasn't an alias.
+	 */
+	private String resolveAlias(String name, Map<String, String> aliases) {
+		String className;
+		String aliasedClassName = aliases.get(name);
+		
+		if (aliasedClassName == null) {
+			className = name;
+		} else {
+			className = aliasedClassName;
+		}
+		
+		return className;
+	}
+	
+	private void setAppenders(List<String> appenderList) {
+		for (String string : appenderList) {
+			addAppender(string);
+		}
+	}
+
+	/**
+	 * Sets the formatter on all appenders attached to the root logger.
+	 * 
+	 * @param properties The properties to configure from.
+	 */
 	private void setFormatter(Properties properties) {
 
 		String formatterString = (String) properties.getProperty(FORMATTER_PREFIX_KEY, "PatternFormatter");
@@ -284,7 +610,7 @@ public class PropertyConfigurator {
 		}
 
 		try {
-			Class formatterClass = Class.forName(className);
+			Class<?> formatterClass = Class.forName(className);
 			Formatter formatter = (Formatter) formatterClass.newInstance();
 			
 			// TODO Add property setup of the formatter.
@@ -310,6 +636,36 @@ public class PropertyConfigurator {
 	}
 
 	/**
+	 * Sets the level using the legacy MicroLog style syntax.
+	 * 
+	 * @param properties The properties to configure from.
+	 */
+	private void setLevel(Properties properties) {
+		String levelString = (String) properties.get(PropertyConfigurator.LOG_LEVEL_PREFIX_KEY);
+		Level level = stringToLevel(levelString);
+
+		if (level != null) {
+			loggerRepository.getRootLogger().setLevel(level);
+			Log.i(TAG, "Root level: " + loggerRepository.getRootLogger().getLevel());
+		}
+	}
+	
+	/**
+	 * Start the configuration
+	 * 
+	 * @param properties
+	 */
+	private void startConfiguration(Properties properties) {
+
+		if (properties.containsKey(PropertyConfigurator.ROOT_LOGGER_KEY)) {
+			configureLog4jStyle(properties);
+		} else {
+			Log.i(TAG, "Configure using the simple style (aka classic style)");
+			configureSimpleStyle(properties);
+		}
+	}
+	
+	/**
 	 * Convert a <code>String</code> containing a level to a <code>Level</code>
 	 * object.
 	 * 
@@ -319,5 +675,4 @@ public class PropertyConfigurator {
 	private Level stringToLevel(String levelString) {
 		return Level.valueOf(levelString);
 	}
-
 }

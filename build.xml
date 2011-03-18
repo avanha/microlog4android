@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:ivy="antlib:org.apache.ivy.ant" name="microlog4android" basedir="." default="init.ivy" >
+	<!-- Local properties first -->
+	<property file="local.properties"/>
+
+	<!-- User properties next -->
+	<property file="${user.home}/ant.properties"/>
+
+	<!-- Load environment variables. Needed for Hudson BUILD_NUMBER-->
+	<property environment="env"/>
+
+	<property name="version.prefix" value=""/>
+	<property name="version.suffix" value=""/>
+	
+	<property name="dist.dir" value="build/distributions"/>
+	
+	<target name="init.ivy">
+		<!-- Configure Ivy -->
+		<property name="ivy.settings.dir" value="${user.home}/.ivy2" />
+		<available property="ivy.settings.file.exists" file="${ivy.settings.dir}/ivysettings.xml" />
+		<fail unless="ivy.settings.file.exists" message="Unable to find ivysettings.xml in ${ivy.settings.dir}"/>
+		<property file="${ivy.settings.dir}/ivysettings.properties" />
+		<ivy:settings file="${ivy.settings.dir}/ivysettings.xml" />
+	</target>
+	
+	<target name="publish" depends="init.ivy">
+		<fail unless="env.BUILD_NUMBER" message="env.BUILD_NUMBER property not set"/>
+		<copy tofile="${dist.dir}/microlog4android.jar">
+			<fileset dir="${dist.dir}" includes="microlog4android*.jar" />
+		</copy>
+		<ivy:resolve />
+		<delete file="${dist.dir}/ivy.xml"/>
+		<ivy:publish artifactspattern="${dist.dir}/[artifact].[ext]" 
+			resolver="photobucket-projects-writable"
+			pubrevision="${version.prefix}${env.BUILD_NUMBER}${version.suffix}"
+			conf="default"
+			status="release"
+			forcedeliver="true" />
+	</target>
+</project>

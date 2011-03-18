@@ -1,0 +1,8 @@
+<ivy-module version="1.0">
+    <info organisation="com.code.google" module="microlog4android" />
+    <configurations>
+    	<conf name="default" visibility="public"/>
+    </configurations>
+    <dependencies>
+    </dependencies>
+</ivy-module>

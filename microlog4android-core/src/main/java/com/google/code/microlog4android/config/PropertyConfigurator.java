@@ -502,7 +502,7 @@ public class PropertyConfigurator {
 		// Create the formatter
 		Formatter formatter = createFormatter(appenderName, properties);
 
-		// If we we created it, configure it's supported properties
+		// If we created it, configure it's supported properties
 		if (formatter != null) {
 			String[] formatterProperties = formatter.getPropertyNames();
 			

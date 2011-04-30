@@ -7,6 +7,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
+import org.slf4j.impl.MicrologLoggerAdapter;
 
 import com.google.code.microlog4android.Level;
 
@@ -45,6 +46,16 @@ public class Slf4jLoggerRepositoryTest {
 		assertEquals(logger1.getName(), logger2.getName());
 		assertEquals(logger1, logger2);
 		assertEquals(1, slf4jLoggerRepository.numberOfLeafNodes());
+	}
+	
+	@Test
+	public void testResetLogger() {
+		Logger logger = slf4jLoggerRepository.getLogger(Slf4jLoggerRepositoryTest.class.getName());
+		((MicrologLoggerAdapter)logger).getMicrologLogger().setLevel(Level.INFO);
+		
+		slf4jLoggerRepository.reset();
+		logger = slf4jLoggerRepository.getLogger(Slf4jLoggerRepositoryTest.class.getName());
+		assertTrue(logger.isDebugEnabled());
 	}
 	
 	@Test

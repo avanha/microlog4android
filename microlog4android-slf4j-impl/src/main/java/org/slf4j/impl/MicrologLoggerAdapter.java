@@ -1,7 +1,6 @@
 package org.slf4j.impl;
 
 import org.slf4j.helpers.MarkerIgnoringBase;
-import org.slf4j.impl.repository.Slf4jLoggerRepository;
 
 import com.google.code.microlog4android.Level;
 import com.google.code.microlog4android.Logger;
@@ -20,13 +19,15 @@ public class MicrologLoggerAdapter extends MarkerIgnoringBase {
 	public MicrologLoggerAdapter(final Logger logger) {
 		this.logger = logger;
 		this.name = logger.getName();
-		logger.setCommonRepository(Slf4jLoggerRepository.INSTANCE);
+		//logger.setCommonRepository(Slf4jLoggerRepository.INSTANCE);
 	}
 
+	/*
 	public MicrologLoggerAdapter(final String name) {
 		logger = new Logger(name, Slf4jLoggerRepository.INSTANCE);
 		this.name = name;
 	}
+	*/
 	
 	public Logger getMicrologLogger() {
 		return logger;

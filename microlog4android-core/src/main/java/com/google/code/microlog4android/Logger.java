@@ -37,6 +37,7 @@ import com.google.code.microlog4android.repository.CommonLoggerRepository;
  * @author Johan Karlsson (johan.karlsson@jayway.se)
  * @author Darius Katz
  * @author Karsten Ohme
+ * @author Andre Vanha
  * @since 0.1
  */
 public final class Logger {
@@ -53,6 +54,8 @@ public final class Logger {
 	private String name;
 
 	private Level level;
+	
+	private Object wrapper;
 
 	private static final StopWatch stopWatch = new StopWatch();
 
@@ -151,6 +154,30 @@ public final class Logger {
 	 */
 	public String getName() {
 		return name;
+	}
+	
+	/**
+	 * Returns the wrapper object associated with this logger.  May be null if a wrapper has not been set.
+	 * 
+	 * @return The wrapper object 
+	 */
+	public Object getWrapper() {
+		return wrapper;
+	}
+	
+	/**
+	 * Sets the wrapper object on this logger if not already set.
+	 * 
+	 * @param wrapper The wrapper to associate with this logger.
+	 * @return The wrapper associated with the logger.  This will be the one passed in if there was not a wrapper prior 
+	 * to the call, or the existing wrapper if it was already set.
+	 */
+	public synchronized Object setWrapper(Object wrapper) {
+		if (this.wrapper == null) {
+			this.wrapper = wrapper; 
+		}
+		
+		return this.wrapper;
 	}
 
 	/**
@@ -473,14 +500,23 @@ public final class Logger {
 	}
 
 	/**
-	 * Reset the Logger, i.e. remove all appenders and set the log level to the
-	 * default level.
+	 * Reset any non-static Logger configuration
+	 * Note:  As of 4/29/11, Microlog only supports a flat list of appenders tied to specific loggers in the tree,
+	 * so for now the resetLogger call will only clear the level.  After this reset, all future calls will delegate to 
+	 * the parent to determine the effective log level.
+	 * 
+	 * @param Level The new logger level.  May be null.
 	 */
-	public synchronized void resetLogger() {
-		Logger.appenderList.clear();
-		Logger.stopWatch.stop();
-		Logger.stopWatch.reset();
-		Logger.firstLogEvent = true;
+	public void resetLogger(Level level) {
+		this.level = level;
+	}
+	
+	/**
+	 * Resets the flat appender list.  
+	 */
+	public static synchronized void resetAppenders() {
+		appenderList.clear();
+		firstLogEvent = true;
 	}
 
 	/**

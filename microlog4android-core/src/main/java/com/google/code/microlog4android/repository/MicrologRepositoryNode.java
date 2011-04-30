@@ -17,7 +17,6 @@ package com.google.code.microlog4android.repository;
 
 import java.util.Hashtable;
 
-import com.google.code.microlog4android.Level;
 import com.google.code.microlog4android.Logger;
 
 
@@ -30,9 +29,9 @@ import com.google.code.microlog4android.Logger;
 public class MicrologRepositoryNode extends AbstractRepositoryNode {
 	private MicrologRepositoryNode parent = null;
 
-	private Hashtable<String, MicrologRepositoryNode> children = new Hashtable<String, MicrologRepositoryNode>(17);
+	protected Hashtable<String, MicrologRepositoryNode> children = new Hashtable<String, MicrologRepositoryNode>(17);
 
-	private Logger logger;
+	protected Logger logger;
 
 	/**
 	 * Create a <code>TreeNode</code> with the specified name and the
@@ -49,12 +48,14 @@ public class MicrologRepositoryNode extends AbstractRepositoryNode {
 		this.logger = logger;
 	}
 	
+	/*
 	public MicrologRepositoryNode(String name, MicrologRepositoryNode parent) {
 		this.name = name;
 		this.parent = parent;
 		this.logger = new Logger(name);
 		logger.setCommonRepository(DefaultLoggerRepository.INSTANCE);
 	}
+	*/
 	
 	public MicrologRepositoryNode(String name, Logger logger, MicrologRepositoryNode parent) {
 		this.name = name;
@@ -78,15 +79,6 @@ public class MicrologRepositoryNode extends AbstractRepositoryNode {
 		return children.get(name);
 	}
 	
-	/**
-	 * Remove all the children.
-	 */
-	public void resetLogger(){
-		children.clear();
-		logger.resetLogger();
-		logger.setLevel(Level.DEBUG);
-	}
-
 	/**
 	 * @return the parent
 	 */

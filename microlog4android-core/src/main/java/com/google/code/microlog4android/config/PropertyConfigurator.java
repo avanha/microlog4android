@@ -284,7 +284,6 @@ public class PropertyConfigurator {
 			Appender appender = (Appender) appenderClass.newInstance();
 
 			if (appender != null) {
-				Log.i(TAG, "Adding appender " + appender.getClass().getName());
 				rootLogger.addAppender(appender);
 			}
 
@@ -326,7 +325,7 @@ public class PropertyConfigurator {
 	 * @param properties The properties to configure from.
 	 */
 	private void configureLog4jStyle(Properties properties) {
-		loggerRepository.reset();
+		loggerRepository.resetConfig();
 		String rootLoggerProperty = properties.getProperty(PropertyConfigurator.ROOT_LOGGER_KEY);
 		doConfigureLogger(/*path*/null, rootLoggerProperty, properties);
 		
@@ -434,7 +433,6 @@ public class PropertyConfigurator {
 					String value = properties.getProperty(propertyKeyBuffer.toString());
 					
 					if (value != null) {
-						Log.i(TAG, "Setting property " + propertyNames[i] + "=" + value);
 						appender.setProperty(propertyNames[i], value);
 					}
 				}
@@ -487,7 +485,6 @@ public class PropertyConfigurator {
 			Appender appender = getAppender(appenderName, properties);
 			
 			if (appender != null) {
-				Log.i(TAG, "Adding appender " + appender);
 				logger.addAppender(appender);
 			}
 			
@@ -525,7 +522,6 @@ public class PropertyConfigurator {
 					String value = properties.getProperty(propertyKeyBuffer.toString());
 					
 					if (value != null) {
-						Log.i(TAG, "Setting property " + formatterProperties[i] + "=" + value);
 						formatter.setProperty(formatterProperties[i], value);
 					}
 				}
@@ -656,7 +652,6 @@ public class PropertyConfigurator {
 	 * @param properties
 	 */
 	private void startConfiguration(Properties properties) {
-
 		if (properties.containsKey(PropertyConfigurator.ROOT_LOGGER_KEY)) {
 			configureLog4jStyle(properties);
 		} else {

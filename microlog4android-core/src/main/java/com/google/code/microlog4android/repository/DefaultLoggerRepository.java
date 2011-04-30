@@ -37,7 +37,7 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 	INSTANCE;
 
 	private static final String TAG = "Microlog.DefaultLoggerRepository";
-	private MicrologRepositoryNode rootNode;
+	private MicrologRepositoryRootNode rootNode;
 	private Hashtable<String, MicrologRepositoryNode> leafNodeHashtable = new Hashtable<String, MicrologRepositoryNode>(43);
 
 	/**
@@ -46,7 +46,7 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 	private DefaultLoggerRepository() {
 		Logger rootLogger = new Logger("", this);
 		rootLogger.setLevel(Level.DEBUG);
-		rootNode = new MicrologRepositoryNode("", rootLogger);
+		rootNode = new MicrologRepositoryRootNode("", rootLogger);
 	}
 
 	/**
@@ -131,7 +131,9 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 	}
 
 	private MicrologRepositoryNode createNewChildNode(final String pathComponent, final MicrologRepositoryNode currentNode) {
-		MicrologRepositoryNode newChild = new MicrologRepositoryNode(pathComponent, currentNode);
+		//MicrologRepositoryNode newChild = new MicrologRepositoryNode(pathComponent, currentNode);
+		MicrologRepositoryNode newChild = new MicrologRepositoryNode(pathComponent, 
+				new Logger(pathComponent, DefaultLoggerRepository.INSTANCE), currentNode);
 		currentNode.addChild(newChild);
 
 		return newChild;
@@ -149,6 +151,10 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 			effectiveLevel = currentNode.getLogger().getLevel();
 			currentNode = currentNode.getParent();
 		}
+		
+		// Make sure we return something to avoid a possible NPE if someone screwed up the root logger's level.
+		if (effectiveLevel == null)
+			effectiveLevel = Level.OFF;
 
 		return effectiveLevel;
 	}
@@ -168,11 +174,29 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 	}
 
 	/**
-	 * Reset the tree.
+	 * Reset the tree and configuration at the root level.
 	 */
 	public void reset() {
-		rootNode.resetLogger();
+		rootNode.reset();
 		leafNodeHashtable.clear();
+		resetConfig();
+	}
+	
+	/**
+	 * Reset the level and appender configuration but keep the tree intact. 
+	 */
+	public void resetConfig() {
+		rootNode.getLogger().resetLogger(Level.DEBUG);
+		Logger.resetAppenders();
+
+		// Reset each existing logger to force everything to delegate to the root.
+		Enumeration<MicrologRepositoryNode> leafNodes = leafNodeHashtable.elements();
+
+		while (leafNodes.hasMoreElements()) {
+			MicrologRepositoryNode node = leafNodes.nextElement();
+			Logger logger = node.getLogger();
+			logger.resetLogger(/*level*/null);
+		}
 	}
 
 	/**

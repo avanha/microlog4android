@@ -17,14 +17,7 @@ package com.google.code.microlog4android.repository;
 import com.google.code.microlog4android.Level;
 import com.google.code.microlog4android.Logger;
 
-
-
-
-
-
-
-public interface LoggerRepository {
-
+public abstract interface LoggerRepository {
 	/**
 	 * Get the root <code>Logger</code> instance.
 	 * 
@@ -74,6 +67,11 @@ public interface LoggerRepository {
 	 * Reset the logger repository.
 	 */
 	public void reset();
+	
+	/**
+	 * Resets only the logger repository configuration without destroying the logger tree.
+	 */
+	public void resetConfig();
 
 	/**
 	 * Shutdown the <code>LoggerRepository</code>, i.e. release all the

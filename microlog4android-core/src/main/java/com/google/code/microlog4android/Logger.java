@@ -188,13 +188,15 @@ public final class Logger {
 	 * @throws IllegalArgumentException
 	 *             if the <code>appender</code> is <code>null</code>.
 	 */
-	public synchronized void addAppender(Appender appender) throws IllegalArgumentException {
+	public void addAppender(Appender appender) throws IllegalArgumentException {
 		if (appender == null) {
 			throw new IllegalArgumentException("Appender not allowed to be null");
 		}
 
-		if (!appenderList.contains(appender)) {
-			appenderList.add(appender);
+		synchronized (appenderList) {
+			if (!appenderList.contains(appender)) {
+				appenderList.add(appender);
+			}
 		}
 	}
 
@@ -204,7 +206,7 @@ public final class Logger {
 	 * @param appender
 	 *            the <code>Appender</code> to remove.
 	 */
-	public synchronized void removeAppender(Appender appender) throws IllegalArgumentException {
+	public void removeAppender(Appender appender) throws IllegalArgumentException {
 		if (appender == null) {
 			throw new IllegalArgumentException("The appender must not be null.");
 		}
@@ -216,7 +218,9 @@ public final class Logger {
 				Log.e(TAG, "Failed to close appender. " + e);
 			}
 		}
-		appenderList.remove(appender);
+		synchronized (appenderList) {
+		    appenderList.remove(appender);
+		}
 	}
 
 	/**
@@ -224,16 +228,18 @@ public final class Logger {
 	 * 
 	 */
 	public void removeAllAppenders() {
-		for (Appender appender : appenderList) {
-			if (appender.isLogOpen()) {
-				try {
-					appender.close();
-				} catch (IOException e) {
-					Log.e(TAG, "Failed to close appender. " + e);
+	    synchronized (appenderList) {
+			for (Appender appender : appenderList) {
+				if (appender.isLogOpen()) {
+					try {
+						appender.close();
+					} catch (IOException e) {
+						Log.e(TAG, "Failed to close appender. " + e);
+					}
 				}
 			}
-		}
-		appenderList.clear();
+			appenderList.clear();
+	    }
 	}
 
 	/**
@@ -242,7 +248,9 @@ public final class Logger {
 	 * @return the number of appenders.
 	 */
 	public int getNumberOfAppenders() {
-		return appenderList.size();
+	    synchronized (appenderList) {
+	        return appenderList.size();
+	    }
 	}
 
 	/**
@@ -302,7 +310,8 @@ public final class Logger {
 				firstLogEvent = false;
 			}
 
-			synchronized (this) {
+			//prevent ConcurrencyModificationExceptions from addAppender, removeAppender, etc
+			synchronized (appenderList) {
 				for (Appender appender : appenderList) {
 					appender.doLog(clientID, name, stopWatch.getCurrentTime(), level, message, t);
 				}
@@ -311,11 +320,13 @@ public final class Logger {
 	}
 	
 	private void addDefaultAppender() {
-		if(appenderList.size() == 0) {
-			Log.w(TAG, "Warning! No appender is set, using LogCatAppender with PatternFormatter");
-			Appender appender = DefaultAppenderFactory.createDefaultAppender();
-			addAppender(appender);
-		}
+        synchronized (appenderList) {
+            if (appenderList.size() == 0) {
+                Log.w(TAG, "Warning! No appender is set, using LogCatAppender with PatternFormatter");
+                Appender appender = DefaultAppenderFactory.createDefaultAppender();
+                addAppender(appender);
+            }
+        }
 	}
 
 	/**
@@ -537,9 +548,11 @@ public final class Logger {
 	 *             if the <code>Logger</code> failed to close.
 	 */
 	public void close() throws IOException {
-		for (Appender appender : appenderList) {
-			appender.close();
-		}
+	    synchronized (appenderList) {
+			for (Appender appender : appenderList) {
+				appender.close();
+			}
+	    }
 
 		stopWatch.stop();
 		Logger.firstLogEvent = true;

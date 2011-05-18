@@ -188,7 +188,7 @@ public final class Logger {
 	 * @throws IllegalArgumentException
 	 *             if the <code>appender</code> is <code>null</code>.
 	 */
-	public void addAppender(Appender appender) throws IllegalArgumentException {
+	public synchronized void addAppender(Appender appender) throws IllegalArgumentException {
 		if (appender == null) {
 			throw new IllegalArgumentException("Appender not allowed to be null");
 		}
@@ -204,7 +204,7 @@ public final class Logger {
 	 * @param appender
 	 *            the <code>Appender</code> to remove.
 	 */
-	public void removeAppender(Appender appender) throws IllegalArgumentException {
+	public synchronized void removeAppender(Appender appender) throws IllegalArgumentException {
 		if (appender == null) {
 			throw new IllegalArgumentException("The appender must not be null.");
 		}
@@ -302,8 +302,10 @@ public final class Logger {
 				firstLogEvent = false;
 			}
 
-			for (Appender appender : appenderList) {
-				appender.doLog(clientID, name, stopWatch.getCurrentTime(), level, message, t);
+			synchronized (this) {
+				for (Appender appender : appenderList) {
+					appender.doLog(clientID, name, stopWatch.getCurrentTime(), level, message, t);
+				}
 			}
 		}
 	}

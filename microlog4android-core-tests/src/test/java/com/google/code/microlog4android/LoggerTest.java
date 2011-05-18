@@ -143,4 +143,24 @@ public class LoggerTest {
 		
 		assertEquals(Level.DEBUG, defaultLevelLogger.getEffectiveLevel());
 	}
+	
+	
+	@Test
+	public void testAddAppenderConcurrent() throws InterruptedException {
+	    //should not get ConcurrentModificiationException
+		logger.addAppender(mock(Appender.class));
+        logger.debug("Main thread!");
+        Thread.sleep(100);
+		Thread t = new Thread() {
+		    public void run() {
+		        for ( int i = 0; i <= 1000; i++) {
+		            logger.debug("Stuff from thread!");
+		        }
+		    };
+		};
+		t.start();
+		logger.addAppender(mock(Appender.class));
+        logger.debug("Main thread!");
+	    t.join();
+	}
 }

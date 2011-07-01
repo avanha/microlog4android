@@ -6,6 +6,8 @@ public enum LoggerNamesUtil {
 	
 	private static final String EMPTY = "";
 	
+	public static final String SEPARATOR = ".";
+	
 	public static String[] getLoggerNameComponents(final String loggerName) {
 		return loggerName.split("\\.");
 	}

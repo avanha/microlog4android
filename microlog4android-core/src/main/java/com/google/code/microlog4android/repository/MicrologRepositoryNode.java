@@ -15,7 +15,9 @@
 
 package com.google.code.microlog4android.repository;
 
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 
 import com.google.code.microlog4android.Logger;
 
@@ -91,5 +93,27 @@ public class MicrologRepositoryNode extends AbstractRepositoryNode {
 	 */
 	public void setParent(MicrologRepositoryNode parent) {
 		this.parent = parent;
+	}
+	
+	public String getPath() {
+		List<String> components = new ArrayList<String>();
+		MicrologRepositoryNode currentNode = this;
+		
+		while (currentNode != null && currentNode.getName().length() > 0) {
+			components.add(currentNode.getName());
+			currentNode = currentNode.getParent();
+		}
+		
+		StringBuilder path = new StringBuilder();
+		
+		for (int i = components.size() - 1; i >= 0; i--) {
+			path.append(components.get(i));
+			path.append(LoggerNamesUtil.SEPARATOR);
+		}
+		
+		if (path.length() > 0)
+			path.deleteCharAt(path.length() - 1);
+		
+		return path.toString();
 	}
 }

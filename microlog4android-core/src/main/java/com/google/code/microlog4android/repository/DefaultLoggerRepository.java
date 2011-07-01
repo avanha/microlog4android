@@ -84,12 +84,16 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 
 		MicrologRepositoryNode currentNode = rootNode;
 		String[] pathComponents = LoggerNamesUtil.getLoggerNameComponents(loggerName);
-		for (String pathComponent : pathComponents) {
-			MicrologRepositoryNode child = currentNode.getChildNode(pathComponent);
+		
+		// Create intermediate nodes
+		for (int i = 0; i < pathComponents.length - 1; i++) {
+			MicrologRepositoryNode child = currentNode.getChildNode(pathComponents[i]);
 
 			if (child == null) {
 				// No child => add the child
-				currentNode = createNewChildNode(pathComponent, currentNode);
+				currentNode = createNewChildNode(pathComponents[i], currentNode);
+			} else {
+				currentNode = child;
 			}
 		}
 
@@ -132,9 +136,18 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 
 	private MicrologRepositoryNode createNewChildNode(final String pathComponent, final MicrologRepositoryNode currentNode) {
 		//MicrologRepositoryNode newChild = new MicrologRepositoryNode(pathComponent, currentNode);
+		String loggerName;
+		
+		if (currentNode.getName().length() == 0) {
+			loggerName = pathComponent;
+		} else {
+			loggerName = currentNode.getPath() + LoggerNamesUtil.SEPARATOR + pathComponent;
+		}
+		
 		MicrologRepositoryNode newChild = new MicrologRepositoryNode(pathComponent, 
-				new Logger(pathComponent, DefaultLoggerRepository.INSTANCE), currentNode);
+				new Logger(loggerName, DefaultLoggerRepository.INSTANCE), currentNode);
 		currentNode.addChild(newChild);
+		//leafNodeHashtable.put(loggerName, newChild);
 
 		return newChild;
 	}

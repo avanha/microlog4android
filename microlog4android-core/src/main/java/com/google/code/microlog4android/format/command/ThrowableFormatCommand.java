@@ -43,7 +43,7 @@ public class ThrowableFormatCommand implements FormatCommandInterface {
 	 * @see FormatCommandInterface#execute(String, String, long, Level, Object, Throwable)
 	 */
 	public String execute(String clientID, String name, long time, Level level, Object message, Throwable throwable) {
-		String result = "";
+	    String result = "";
 		
 	    if (maxLines != 0 && throwable != null) {
 	    	StringWriter sw = new StringWriter();
@@ -54,6 +54,6 @@ public class ThrowableFormatCommand implements FormatCommandInterface {
 	    	result = sw.getBuffer().toString();
 	    }
 	    	
-		return result;
+	    return result;
 	}
 }

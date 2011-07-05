@@ -119,7 +119,7 @@ public class MicrologLoggerAdapter extends MarkerIgnoringBase {
 	}
 
 	public boolean isWarnEnabled() {
-		return true; // TODO why is there no isWarnEnabled in the microlog logger?
+		return isLoggerEnabled(Level.WARN);
 	}
 
 	public void warn(final String msg) {

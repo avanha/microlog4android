@@ -95,6 +95,11 @@ public class MicrologRepositoryNode extends AbstractRepositoryNode {
 		this.parent = parent;
 	}
 	
+	/**
+	 * Returns the path to the node.  The path is made up of this node all the way to the root.
+	 * 
+	 * @return The full path to the node.
+	 */
 	public String getPath() {
 		List<String> components = new ArrayList<String>();
 		MicrologRepositoryNode currentNode = this;

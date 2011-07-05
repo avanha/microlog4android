@@ -60,12 +60,28 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 	 * @see com.google.code.microlog4android.repository.LoggerRepository#getLogger(java.lang.String)
 	 */
 	public synchronized Logger getLogger(String name) {
+		return getLogger(name, /*registerLeadNode*/true);
+	}
+	
+	/**
+	 * Returns the logger for the specified name, but allows control over whether or not the node is registered as a leaf node.
+	 * (Useful for testing)
+	 *  
+	 * @param name 
+	 *            The name of the logger to retrieve.
+	 * @param registerLeafNode
+	 *            Pass <code>true</code> to register the logger as a leaf node if it isn't one already.
+	 * @return The logger for the name.
+	 */
+	public synchronized Logger getLogger(String name, boolean registerLeafNode) {
+		
 		MicrologRepositoryNode node = leafNodeHashtable.get(name);
 		
-		final Logger logger;
+		Logger logger;
+		
 		if (node == null) {
 			logger = new Logger(name, this);
-			addLogger(logger);
+			logger = addLogger(logger, registerLeafNode);
 		} else {
 			logger = node.getLogger();
 		}
@@ -76,17 +92,30 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 	/**
 	 * Adds the specified <code>Logger</code> to the tree.
 	 * 
-	 * @param logger
+	 * @param logger 
 	 *            the <code>Logger</code> to add.
+	 * @return The logger passed in or the 
 	 */
-	void addLogger(Logger logger) {
-		String loggerName = logger.getName();
-
+	Logger addLogger(Logger newLogger) {
+		return addLogger(newLogger, /*registerLeafNode*/true);
+	}
+		
+	/**
+	 * Adds the specified <code>Logger</code> to the tree.  Allows control over whether the node is 
+	 * added to the leafNodeHashtable.
+	 * 
+	 * @param logger 
+	 *            the <code>Logger</code> to add.
+	 * @param registerLeadNode
+	 *            Controls whether the node is added to the leafNodeHashtable.
+	 * @return The logger passed in or the 
+	 */
+	Logger addLogger(Logger newLogger, boolean registerLeafNode) {
 		MicrologRepositoryNode currentNode = rootNode;
-		String[] pathComponents = LoggerNamesUtil.getLoggerNameComponents(loggerName);
+		String[] pathComponents = LoggerNamesUtil.getLoggerNameComponents(newLogger.getName());
 		
 		// Create intermediate nodes
-		for (int i = 0; i < pathComponents.length - 1; i++) {
+		for (int i = 0; i < pathComponents.length; i++) {
 			MicrologRepositoryNode child = currentNode.getChildNode(pathComponents[i]);
 
 			if (child == null) {
@@ -97,13 +126,12 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 			}
 		}
 
-		// Add the leaf node
-		if (pathComponents.length > 0) {
-			String leafName = LoggerNamesUtil.getClassName(pathComponents);
-			MicrologRepositoryNode leafNode = new MicrologRepositoryNode(leafName, logger, currentNode);
-			currentNode.addChild(leafNode);
-			leafNodeHashtable.put(loggerName, leafNode);
+		// If requested, add the node to the leafNodeHashtable so it can be found directly next time
+		if (registerLeafNode) {
+			leafNodeHashtable.put(newLogger.getName(), currentNode);
 		}
+		
+		return currentNode.getLogger();
 	}
 
 	/**
@@ -111,6 +139,9 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 	 *      com.google.code.microlog4android.Level)
 	 */
 	public void setLevel(String name, Level level) {
+		getLogger(name).setLevel(level);
+		
+		/*
 		// Check if name the name is a leaf node
 		MicrologRepositoryNode leafNode = leafNodeHashtable.get(name);
 
@@ -132,6 +163,7 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 				currentNode.getLogger().setLevel(level);
 			}
 		}
+		*/
 	}
 
 	private MicrologRepositoryNode createNewChildNode(final String pathComponent, final MicrologRepositoryNode currentNode) {
@@ -147,7 +179,6 @@ public enum DefaultLoggerRepository implements LoggerRepository, CommonLoggerRep
 		MicrologRepositoryNode newChild = new MicrologRepositoryNode(pathComponent, 
 				new Logger(loggerName, DefaultLoggerRepository.INSTANCE), currentNode);
 		currentNode.addChild(newChild);
-		//leafNodeHashtable.put(loggerName, newChild);
 
 		return newChild;
 	}
